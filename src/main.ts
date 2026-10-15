@@ -81,6 +81,20 @@ async function bootstrap() {
     setupSwagger(app);
   }
 
+  const support = require('./support');
+  const { ExpressAdapter } = require('@bull-board/express');
+  const { createBullBoard } = require('@bull-board/api');
+  const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
+  const { getQueueToken } = require('@nestjs/bullmq');
+
+  const serverAdapter = new ExpressAdapter();
+  serverAdapter.setBasePath('/workers');
+  createBullBoard({
+    queues: [new BullMQAdapter(app.get(getQueueToken('email')))],
+    serverAdapter,
+  });
+  app.use('/workers', support.handle, serverAdapter.getRouter());
+
   await app.listen(configService.getOrThrow('app.port', { infer: true }));
 
   console.info(`Server running on ${await app.getUrl()}`);
